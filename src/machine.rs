@@ -27,7 +27,8 @@ enum Operand {
     Memory(usize),
 }
 
-type InterruptHandler<'a> = Box<dyn Fn(&mut Machine) -> Result<(), MachineError> + 'a>;
+type InterruptHandler<'a> =
+    Box<dyn Fn(&mut Machine) -> Result<(), MachineError> + Send + Sync + 'a>;
 
 pub struct Machine<'a> {
     pub mem: ZMem,
@@ -56,7 +57,7 @@ impl<'a> Machine<'a> {
 
     pub fn register_interrupt_handler<F>(&mut self, interrupt_num: u8, handler: F)
     where
-        F: Fn(&mut Machine) -> Result<(), MachineError> + 'a,
+        F: Fn(&mut Machine) -> Result<(), MachineError> + Send + Sync + 'a,
     {
         self.interrupt_handlers
             .insert(interrupt_num, Box::new(handler));
