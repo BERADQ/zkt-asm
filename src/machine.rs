@@ -3,6 +3,7 @@ use thiserror::Error;
 use crate::mem::{MemError, ZMem};
 use crate::token::Token;
 use std::collections::HashMap;
+use std::fmt::Display;
 
 #[derive(Debug, PartialEq, Error)]
 pub enum MachineError {
@@ -18,6 +19,13 @@ pub enum MachineError {
     UnhandledInterrupt(u8),
     #[error("Memory error: {0}")]
     MemoryError(#[from] MemError),
+    #[error("Machine error: {0}")]
+    Custom(String),
+}
+impl MachineError {
+    pub fn custom(msg: impl Display) -> Self {
+        MachineError::Custom(msg.to_string())
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -226,6 +234,8 @@ impl<'a> Machine<'a> {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use crate::{machine::Machine, tokenizer::tokenizer};
 
     #[test]
@@ -289,7 +299,11 @@ mod tests {
     #[test]
     fn send_sync() {
         let machine = Machine::new();
-        _send_sync(machine);
+        _send_sync(Arc::new(machine));
     }
-    fn _send_sync<V: Send + Sync + 'static>(_a: V) {}
+    fn _send_sync<V: Send + Sync + 'static>(_a: Arc<V>) {
+        std::thread::spawn(move || {
+            let _a = _a;
+        });
+    }
 }
