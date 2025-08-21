@@ -1,15 +1,16 @@
 use zkt_asm::{machine::Machine, tokenizer::tokenizer};
 
-fn main() {
-    let mut machine = Machine::new();
+#[tokio::main]
+async fn main() {
+    let machine = Machine::shared();
 
     // Register interrupt 1 to print a null-terminated string from memory
-    machine.register_interrupt_handler(1, |m| {
-        let addr = *m.registers.get("r1").unwrap_or(&0) as usize;
+    machine.register_interrupt_fn(1, async |m| {
+        let addr = *m.read().unwrap().registers.get("r1").unwrap_or(&0) as usize;
         let mut bytes = Vec::new();
         let mut current_addr = addr;
         loop {
-            let byte = m.mem.get(current_addr)?;
+            let byte = m.read().unwrap().mem.get(current_addr)?;
             if byte == 0 {
                 break;
             }
@@ -30,5 +31,5 @@ fn main() {
 
     // Tokenize and run the code
     let tokens = tokenizer::tokenize(code).unwrap();
-    machine.run(&tokens).unwrap();
+    machine.run(&tokens).await.unwrap();
 }
