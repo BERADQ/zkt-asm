@@ -1,0 +1,8 @@
+[package]
+name = "zkt-asm"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+peg = "0.8.5"
+thiserror = "2.0.16"
