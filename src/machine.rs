@@ -363,6 +363,7 @@ impl SharedMachine {
                 break;
             }
         }
+        self.write().unwrap().data_ptr = 0;
         Ok(())
     }
 }

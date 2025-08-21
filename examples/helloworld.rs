@@ -31,5 +31,9 @@ async fn main() {
 
     // Tokenize and run the code
     let tokens = tokenizer::tokenize(code).unwrap();
-    machine.run(&tokens).await.unwrap();
+    tokio::spawn(async move {
+        machine.run(&tokens).await.unwrap();
+        machine.run(&tokens).await.unwrap();
+        machine.run(&tokens).await.unwrap();
+    }).await.unwrap();
 }
