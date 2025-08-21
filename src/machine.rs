@@ -285,4 +285,11 @@ mod tests {
         assert_eq!(machine.mem[6], 30);
         assert_eq!(machine.data_ptr, 7);
     }
+
+    #[test]
+    fn send_sync() {
+        let machine = Machine::new();
+        _send_sync(machine);
+    }
+    fn _send_sync<V: Send + Sync + 'static>(_a: V) {}
 }
