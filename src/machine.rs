@@ -58,17 +58,18 @@ pub trait InterruptHandler {
 }
 
 pub type BoxedInterruptHandler = Box<
-    dyn InterruptHandler<Future = Pin<Box<dyn Future<Output = Result<(), MachineError>>>>>
-        + Send
+    dyn InterruptHandler<
+            Future = Pin<Box<dyn Future<Output = Result<(), MachineError>> + Send + Sync>>,
+        > + Send
         + Sync,
 >;
 
 pub struct InterruptHandlerErase<H: InterruptHandler>(pub H);
 impl<H: InterruptHandler> InterruptHandler for InterruptHandlerErase<H>
 where
-    H::Future: 'static,
+    H::Future: Send + Sync + 'static,
 {
-    type Future = Pin<Box<dyn Future<Output = Result<(), MachineError>>>>;
+    type Future = Pin<Box<dyn Future<Output = Result<(), MachineError>> + Send + Sync>>;
     fn handle_interrupt(&self, machine: SharedMachineInner) -> Self::Future {
         Box::pin(self.0.handle_interrupt(machine))
     }
@@ -77,6 +78,7 @@ where
 pub fn box_interrupt_handler<IH>(handler: IH) -> BoxedInterruptHandler
 where
     IH: InterruptHandler + Send + Sync + 'static,
+    IH::Future: Send + Sync,
 {
     Box::new(InterruptHandlerErase(handler))
 }
@@ -104,7 +106,7 @@ where
 pub fn boxed_fn<IH, Fut>(handler: IH) -> BoxedInterruptHandler
 where
     IH: Fn(SharedMachineInner) -> Fut + Send + Sync + 'static,
-    Fut: Future<Output = Result<(), MachineError>>,
+    Fut: Future<Output = Result<(), MachineError>> + Send + Sync,
 {
     box_interrupt_handler(interrupt_handler_fn(handler))
 }
@@ -141,6 +143,7 @@ impl SharedMachine {
     pub fn register_interrupt_handler<H>(&self, interrupt_num: u8, handler: H)
     where
         H: InterruptHandler + Send + Sync + 'static,
+        H::Future: Send + Sync,
     {
         self.write()
             .unwrap()
@@ -151,7 +154,7 @@ impl SharedMachine {
     pub fn register_interrupt_fn<IH, Fut>(&self, interrupt_num: u8, handler: IH)
     where
         IH: Fn(SharedMachineInner) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<(), MachineError>>,
+        Fut: Future<Output = Result<(), MachineError>> + Send + Sync,
     {
         self.write()
             .unwrap()
@@ -366,8 +369,6 @@ impl SharedMachine {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use crate::{
         machine::{Machine, interrupt_handler_fn},
         tokenizer::tokenizer,
@@ -441,9 +442,10 @@ mod tests {
     #[test]
     fn send_sync() {
         let machine = Machine::shared();
-        _send_sync(Arc::new(machine));
+        _send_sync(machine.clone());
+        _send_sync(machine);
     }
-    fn _send_sync<V: Send + Sync + 'static>(_a: Arc<V>) {
+    fn _send_sync<V: Send + Sync + 'static>(_a: V) {
         std::thread::spawn(move || {
             let _a = _a;
         });
